@@ -219,20 +219,25 @@ var ReactUpdateQueue = {
    * @internal
    */
   enqueueSetState: function(publicInstance, partialState) {
+    // 获取到内部准备好去更新state的组件实例
     var internalInstance = getInternalInstanceReadyForUpdate(
       publicInstance,
       'setState'
     );
 
+    // 实例不存在，直接返回，不执行更新
     if (!internalInstance) {
       return;
     }
 
+    // 获取到实例对应的更新队列
     var queue =
       internalInstance._pendingStateQueue ||
       (internalInstance._pendingStateQueue = []);
+    // 合并state到更新队列里边
     queue.push(partialState);
 
+    // 执行更新
     enqueueUpdate(internalInstance);
   },
 

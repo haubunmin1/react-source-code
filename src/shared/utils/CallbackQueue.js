@@ -51,6 +51,9 @@ Object.assign(CallbackQueue.prototype, {
    * Invokes all enqueued callbacks and clears the queue. This is invoked after
    * the DOM representation of a component has been created or updated.
    *
+   * 触发队列里的回调，并且清理队列。
+   * 在创建或更新组件的DOM结构之后调用
+   *
    * @internal
    */
   notifyAll: function() {

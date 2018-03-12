@@ -631,6 +631,7 @@ ReactDOMComponent.Mixin = {
    * @param {ReactReconcileTransaction|ReactServerRenderingTransaction} transaction
    * @param {object} props
    * @return {string} Markup of opening tag.
+   * 更新属性，处理DOM节点的属性和事件
    */
   _createOpenTagMarkupAndPutListeners: function(transaction, props) {
     var ret = '<' + this._currentElement.type;
@@ -836,6 +837,8 @@ ReactDOMComponent.Mixin = {
    * Reconciles the properties by detecting differences in property values and
    * updating the DOM as necessary. This function is probably the single most
    * critical path for performance optimization.
+   *
+   * DOM节点属性更新
    *
    * TODO: Benchmark whether checking for changed values in memory actually
    *       improves performance (especially statically positioned elements).

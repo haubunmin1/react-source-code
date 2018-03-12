@@ -97,6 +97,8 @@ var Mixin = {
   /**
    * @abstract
    * @return {Array<TransactionWrapper>} Array of transaction wrappers.
+   *
+   * 获取所有需要封装的前置方法（initialize）和收尾方法（close），返回一个数组对象，每个数组元素对象分别有key为initialize和close方法
    */
   getTransactionWrappers: null,
 
@@ -110,9 +112,9 @@ var Mixin = {
    * need to be safety checked. The optional arguments helps prevent the need
    * to bind in many cases.
    *
-   * @param {function} method Member of scope to call.
-   * @param {Object} scope Scope to invoke from.
-   * @param {Object?=} a Argument to pass to the method.
+   * @param {function} method Member of scope to call. 需要执行的方法的名字
+   * @param {Object} scope Scope to invoke from. 执行方法需要的作用域
+   * @param {Object?=} a Argument to pass to the method. // 方法执行是需要的参数，6个可选
    * @param {Object?=} b Argument to pass to the method.
    * @param {Object?=} c Argument to pass to the method.
    * @param {Object?=} d Argument to pass to the method.
@@ -136,8 +138,8 @@ var Mixin = {
       // close -- if it's still set to true in the finally block, it means
       // one of these calls threw.
       errorThrown = true;
-      this.initializeAll(0);
-      ret = method.call(scope, a, b, c, d, e, f);
+      this.initializeAll(0); // 循环执行所有的前置方法
+      ret = method.call(scope, a, b, c, d, e, f); // 执行方法method
       errorThrown = false;
     } finally {
       try {
@@ -145,7 +147,7 @@ var Mixin = {
           // If `method` throws, prefer to show that stack trace over any thrown
           // by invoking `closeAll`.
           try {
-            this.closeAll(0);
+            this.closeAll(0); // 循环执行所有的收尾方法close
           } catch (err) {
           }
         } else {

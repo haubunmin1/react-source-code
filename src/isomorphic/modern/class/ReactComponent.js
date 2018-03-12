@@ -74,7 +74,11 @@ ReactComponent.prototype.setState = function(partialState, callback) {
       'instead, use forceUpdate().'
     );
   }
+
+  // 更新state到更新队列
   this.updater.enqueueSetState(this, partialState);
+
+  // 更新state完成之后的回调函数
   if (callback) {
     this.updater.enqueueCallback(this, callback, 'setState');
   }

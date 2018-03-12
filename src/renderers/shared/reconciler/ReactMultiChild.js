@@ -27,6 +27,8 @@ var invariant = require('invariant');
  * @param {string} markup Markup that renders into an element.
  * @param {number} toIndex Destination index.
  * @private
+ *
+ * 新节点插入
  */
 function makeInsertMarkup(markup, afterNode, toIndex) {
   // NOTE: Null values reduce hidden classes.
@@ -46,6 +48,8 @@ function makeInsertMarkup(markup, afterNode, toIndex) {
  * @param {number} fromIndex Source index of the existing element.
  * @param {number} toIndex Destination index of the element.
  * @private
+ *
+ * 节点更新移动
  */
 function makeMove(child, afterNode, toIndex) {
   // NOTE: Null values reduce hidden classes.
@@ -64,6 +68,8 @@ function makeMove(child, afterNode, toIndex) {
  *
  * @param {number} fromIndex Index of the element to remove.
  * @private
+ *
+ * 节点删除
  */
 function makeRemove(child, node) {
   // NOTE: Null values reduce hidden classes.
@@ -118,6 +124,7 @@ function makeTextContent(textContent) {
  * passed and always returns the queue. Mutative.
  */
 function enqueue(queue, update) {
+  // 如果有更新，压入更新队列
   if (update) {
     queue = queue || [];
     queue.push(update);
@@ -127,6 +134,8 @@ function enqueue(queue, update) {
 
 /**
  * Processes any enqueued updates.
+ *
+ * 处理队列的更新
  *
  * @private
  */
@@ -275,7 +284,9 @@ var ReactMultiChild = {
     /**
      * Updates the rendered children with new children.
      *
-     * @param {?object} nextNestedChildrenElements Nested child element maps.
+     * 更新新的子节点
+     *
+     * @param {?object} nextNestedChildrenElements Nested child element maps. 嵌套的子元素节点地图
      * @param {ReactReconcileTransaction} transaction
      * @internal
      */
@@ -300,29 +311,29 @@ var ReactMultiChild = {
         transaction,
         context
       );
-      if (!nextChildren && !prevChildren) {
+      if (!nextChildren && !prevChildren) { // 如果不存在子节点，不作diff处理
         return;
       }
       var updates = null;
       var name;
       // `nextIndex` will increment for each child in `nextChildren`, but
       // `lastIndex` will be the last index visited in `prevChildren`.
-      var lastIndex = 0;
-      var nextIndex = 0;
+      var lastIndex = 0; // 是prevChildren，也就是最后访问位置的索引
+      var nextIndex = 0; // nextChildren新集合中每个节点的索引
       var lastPlacedNode = null;
-      for (name in nextChildren) {
+      for (name in nextChildren) { // 遍历新集合
         if (!nextChildren.hasOwnProperty(name)) {
           continue;
         }
         var prevChild = prevChildren && prevChildren[name];
         var nextChild = nextChildren[name];
-        if (prevChild === nextChild) {
+        if (prevChild === nextChild) { // 两个节点的唯一key一致，是相同节点，进行移动操作
           updates = enqueue(
             updates,
             this.moveChild(prevChild, lastPlacedNode, nextIndex, lastIndex)
           );
-          lastIndex = Math.max(prevChild._mountIndex, lastIndex);
-          prevChild._mountIndex = nextIndex;
+          lastIndex = Math.max(prevChild._mountIndex, lastIndex); // 更新lastIndex为旧集合中位置和旧集合中最大位置进行比较，取其中最大值
+          prevChild._mountIndex = nextIndex; // 更新旧集合中节点的位置
         } else {
           if (prevChild) {
             // Update `lastIndex` before `_mountIndex` gets unset by unmounting.
@@ -330,6 +341,7 @@ var ReactMultiChild = {
             // The `removedNodes` loop below will actually remove the child.
           }
           // The child must be instantiated before it's mounted.
+          // 初始化并创建新节点，并更新为新集合中的位置
           updates = enqueue(
             updates,
             this._mountChildAtIndex(
@@ -345,6 +357,7 @@ var ReactMultiChild = {
         lastPlacedNode = ReactReconciler.getNativeNode(nextChild);
       }
       // Remove children that are no longer present.
+      // 遍历旧集合中不需要更新也不需要移动的节点，即不存在于新集合中的子节点，移除它
       for (name in removedNodes) {
         if (removedNodes.hasOwnProperty(name)) {
           updates = enqueue(
@@ -353,6 +366,7 @@ var ReactMultiChild = {
           );
         }
       }
+      // 如果存在属性更新，则处理更新队列
       if (updates) {
         processQueue(this, updates);
       }
@@ -363,6 +377,8 @@ var ReactMultiChild = {
      * Unmounts all rendered children. This should be used to clean up children
      * when this component is unmounted. It does not actually perform any
      * backend operations.
+     *
+     * 卸载已经渲染的子节点，用于清理被卸载了的组件的
      *
      * @internal
      */
@@ -384,6 +400,7 @@ var ReactMultiChild = {
       // If the index of `child` is less than `lastIndex`, then it needs to
       // be moved. Otherwise, we do not need to move it because a child will be
       // inserted or moved before `child`.
+      // 将当前节点在旧集合中的位置和访问过的节点在旧集合中最右的位置（最大位置），只有当访问的节点比lastIndex小时，才进行移动操作
       if (child._mountIndex < lastIndex) {
         return makeMove(child, afterNode, toIndex);
       }
@@ -420,6 +437,9 @@ var ReactMultiChild = {
      * @param {number} index Index at which to insert the child.
      * @param {ReactReconcileTransaction} transaction
      * @private
+     *
+     * 通过提供的名称实例化子节点
+     *
      */
     _mountChildAtIndex: function(
       child,

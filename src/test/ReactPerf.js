@@ -50,7 +50,7 @@ var ReactPerf = {
 
   /**
    * Use this to wrap methods you want to measure. Zero overhead in production.
-   *
+   * 请用它来包装你想测量的方法，在生产环境中零开销
    * @param {string} objName
    * @param {string} fnName
    * @param {function} func

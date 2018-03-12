@@ -7,6 +7,8 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  *
  * @providesModule ReactCompositeComponent
+ *
+ * 实现了React组件的生命周期和setState机制
  */
 
 'use strict';
@@ -44,6 +46,8 @@ function StatelessComponent(Component) {
 }
 StatelessComponent.prototype.render = function() {
   var Component = ReactInstanceMap.get(this)._currentElement.type;
+
+  // 不存在state
   var element = Component(this.props, this.context, this.updater);
   warnIfInvalidElement(Component, element);
   return element;
@@ -96,6 +100,8 @@ function shouldConstruct(Component) {
  * used to enforce the order in which `ReactUpdates` updates dirty components.
  *
  * @private
+ *
+ * 当组件挂载时，会分配一个递增编号，表示执行ReactUpdates时更新组件的顺序
  */
 var nextMountID = 1;
 
@@ -144,7 +150,7 @@ var ReactCompositeComponentMixin = {
    * @param {?object} nativeParent
    * @param {?object} nativeContainerInfo
    * @param {?object} context
-   * @return {?string} Rendered markup to be inserted into the DOM.
+   * @return {?string} Rendered markup to be inserted into the DOM. 渲染标记将被插入到DOM中去
    * @final
    * @internal
    */
@@ -154,9 +160,9 @@ var ReactCompositeComponentMixin = {
     nativeContainerInfo,
     context
   ) {
-    this._context = context;
-    this._mountOrder = nextMountID++;
-    this._nativeParent = nativeParent;
+    this._context = context; // 当前组件对应的上下文
+    this._mountOrder = nextMountID++; // 组件挂载组件顺序
+    this._nativeParent = nativeParent; //
     this._nativeContainerInfo = nativeContainerInfo;
 
     var publicProps = this._processProps(this._currentElement.props);
@@ -274,6 +280,7 @@ var ReactCompositeComponentMixin = {
       );
     }
 
+    // 初始化state
     var initialState = inst.state;
     if (initialState === undefined) {
       inst.state = initialState = null;
@@ -284,12 +291,13 @@ var ReactCompositeComponentMixin = {
       this.getName() || 'ReactCompositeComponent'
     );
 
+    // 初始化更新队列
     this._pendingStateQueue = null;
     this._pendingReplaceState = false;
     this._pendingForceUpdate = false;
 
     var markup;
-    if (inst.unstable_handleError) {
+    if (inst.unstable_handleError) { // 捕捉到挂载时出错
       markup = this.performInitialMountWithErrorHandling(
         renderedElement,
         nativeParent,
@@ -298,10 +306,12 @@ var ReactCompositeComponentMixin = {
         context
       );
     } else {
+      // 执行初始化挂载
       markup = this.performInitialMount(renderedElement, nativeParent, nativeContainerInfo, transaction, context);
     }
 
     if (inst.componentDidMount) {
+      // 组件挂载完成,存在componentDidMount方法，在这里调用它
       transaction.getReactMountReady().enqueue(inst.componentDidMount, inst);
     }
 
@@ -330,7 +340,7 @@ var ReactCompositeComponentMixin = {
     }
   },
 
-  performInitialMountWithErrorHandling: function(
+  performInitialMountWithErrorHandling: function( // 组件挂载出错时调用
     renderedElement,
     nativeParent,
     nativeContainerInfo,
@@ -340,6 +350,7 @@ var ReactCompositeComponentMixin = {
     var markup;
     var checkpoint = transaction.checkpoint();
     try {
+      // 没捕捉到错误，执行初始化挂载
       markup = this.performInitialMount(renderedElement, nativeParent, nativeContainerInfo, transaction, context);
     } catch (e) {
       // Roll back to checkpoint, handle error (which may add items to the transaction), and take a new checkpoint
@@ -350,6 +361,7 @@ var ReactCompositeComponentMixin = {
       }
       checkpoint = transaction.checkpoint();
 
+      // 捕捉到错误，先执行unmountComponent之后再次初始化组件挂载
       this._renderedComponent.unmountComponent(true);
       transaction.rollback(checkpoint);
 
@@ -363,24 +375,29 @@ var ReactCompositeComponentMixin = {
   performInitialMount: function(renderedElement, nativeParent, nativeContainerInfo, transaction, context) {
     var inst = this._instance;
     if (inst.componentWillMount) {
+      // 如果存在componentWillMount方法，则在这里执行它
       inst.componentWillMount();
       // When mounting, calls to `setState` by `componentWillMount` will set
       // `this._pendingStateQueue` without triggering a re-render.
+      // componentWillMount中调用setState方法时，组件不会重新渲染，而是把state自动提前合并，压入state更新队列中去
       if (this._pendingStateQueue) {
         inst.state = this._processPendingState(inst.props, inst.context);
       }
     }
 
     // If not a stateless component, we now render
+    // 不是无状态组件时，现在就可以开始渲染了
     if (renderedElement === undefined) {
       renderedElement = this._renderValidatedComponent();
     }
 
     this._renderedNodeType = ReactNodeTypes.getType(renderedElement);
+    // 得到当前元素对应的组件实例
     this._renderedComponent = this._instantiateReactComponent(
       renderedElement
     );
 
+    // render递归渲染
     var markup = ReactReconciler.mountComponent(
       this._renderedComponent,
       transaction,
@@ -408,7 +425,7 @@ var ReactCompositeComponentMixin = {
     }
     var inst = this._instance;
 
-    if (inst.componentWillUnmount && !inst._calledComponentWillUnmount) {
+    if (inst.componentWillUnmount && !inst._calledComponentWillUnmount) { // 存在componentWillUnmount则调用
       inst._calledComponentWillUnmount = true;
       if (safely) {
         var name = this.getName() + '.componentWillUnmount()';
@@ -418,6 +435,7 @@ var ReactCompositeComponentMixin = {
       }
     }
 
+    // 如果组件已经渲染过，则对组件进行unmountComponent操作
     if (this._renderedComponent) {
       ReactReconciler.unmountComponent(this._renderedComponent, safely);
       this._renderedNodeType = null;
@@ -428,6 +446,7 @@ var ReactCompositeComponentMixin = {
     // Reset pending fields
     // Even if this component is scheduled for another update in ReactUpdates,
     // it would still be ignored because these fields are reset.
+    // 重置相关参数，更新队列以及更新状态
     this._pendingStateQueue = null;
     this._pendingReplaceState = false;
     this._pendingForceUpdate = false;
@@ -443,6 +462,7 @@ var ReactCompositeComponentMixin = {
     // Delete the reference from the instance to this internal representation
     // which allow the internals to be properly cleaned up even if the user
     // leaks a reference to the public instance.
+    // 清除当前卸载组件的实例
     ReactInstanceMap.remove(inst);
 
     // Some existing components rely on inst.props even after they've been
@@ -624,6 +644,7 @@ var ReactCompositeComponentMixin = {
 
     this._pendingElement = null;
 
+    // 通过调用updateCompoment来进行组件更新
     this.updateComponent(
       transaction,
       prevElement,
@@ -689,6 +710,7 @@ var ReactCompositeComponentMixin = {
     var nextProps;
 
     // Determine if the context has changed or not
+    // 上下文是否改变
     if (this._context === nextUnmaskedContext) {
       nextContext = inst.context;
     } else {
@@ -697,11 +719,11 @@ var ReactCompositeComponentMixin = {
     }
 
     // Distinguish between a props update versus a simple state update
-    if (prevParentElement === nextParentElement) {
+    if (prevParentElement === nextParentElement) { // 前后元素类型一致，跳过元素类型检测
       // Skip checking prop types again -- we don't read inst.props to avoid
       // warning for DOM component props in this upgrade
       nextProps = nextParentElement.props;
-    } else {
+    } else { // 检测元素类型
       nextProps = this._processProps(nextParentElement.props);
       willReceive = true;
     }
@@ -709,12 +731,15 @@ var ReactCompositeComponentMixin = {
     // An update here will schedule an update but immediately set
     // _pendingStateQueue which will ensure that any state updates gets
     // immediately reconciled instead of waiting for the next batch.
+    // 如果存在componentWillReceiveProps则调用之，如果在这里设置了调用了setState，将会
     if (willReceive && inst.componentWillReceiveProps) {
       inst.componentWillReceiveProps(nextProps, nextContext);
     }
 
+    // 将state合并到更新队列，并返回最新的state
     var nextState = this._processPendingState(nextProps, nextContext);
 
+    // 根据是否强制更新和shouldComponentUpdate方法的返回值来决定是否需要更新组件
     var shouldUpdate =
       this._pendingForceUpdate ||
       !inst.shouldComponentUpdate ||
@@ -730,8 +755,10 @@ var ReactCompositeComponentMixin = {
     }
 
     if (shouldUpdate) {
+      // 重置强制更新标识
       this._pendingForceUpdate = false;
       // Will set `this.props`, `this.state` and `this.context`.
+      // 执行组件更新，更新this.props、this.state、this.context的值
       this._performComponentUpdate(
         nextParentElement,
         nextProps,
@@ -743,6 +770,7 @@ var ReactCompositeComponentMixin = {
     } else {
       // If it's determined that a component should not update, we still want
       // to set props and state but we shortcut the rest of the update.
+      // 如果确定组件不需要更新，也需要设置props、state和context的值
       this._currentElement = nextParentElement;
       this._context = nextUnmaskedContext;
       inst.props = nextProps;
@@ -751,6 +779,7 @@ var ReactCompositeComponentMixin = {
     }
   },
 
+  // 取出更新队列里边的最新State值
   _processPendingState: function(props, context) {
     var inst = this._instance;
     var queue = this._pendingStateQueue;
@@ -784,10 +813,12 @@ var ReactCompositeComponentMixin = {
    * Merges new props and state, notifies delegate methods of update and
    * performs update.
    *
-   * @param {ReactElement} nextElement Next element
-   * @param {object} nextProps Next public object to set as properties.
-   * @param {?object} nextState Next object to set as state.
-   * @param {?object} nextContext Next public object to set as context.
+   * 当组件确认更新时，则调用这个方法，更新新的props、state和context，通知被委托的更新方法来执行更新操作
+   *
+   * @param {ReactElement} nextElement Next element 即将被更新的元素
+   * @param {object} nextProps Next public object to set as properties. 即将被设置到组件props上的对象
+   * @param {?object} nextState Next object to set as state. 即将被设置到组件state上的对象
+   * @param {?object} nextContext Next public object to set as context. 即将被设置为conext的对象
    * @param {ReactReconcileTransaction} transaction
    * @param {?object} unmaskedContext
    * @private
@@ -802,29 +833,32 @@ var ReactCompositeComponentMixin = {
   ) {
     var inst = this._instance;
 
-    var hasComponentDidUpdate = Boolean(inst.componentDidUpdate);
+    var hasComponentDidUpdate = Boolean(inst.componentDidUpdate); // 是否存在componentDidUpdate方法
     var prevProps;
     var prevState;
     var prevContext;
-    if (hasComponentDidUpdate) {
+    if (hasComponentDidUpdate) { // 如果存在componentDidUpdate方法，则将当前组件的props、state和context缓存起来
       prevProps = inst.props;
       prevState = inst.state;
       prevContext = inst.context;
     }
 
-    if (inst.componentWillUpdate) {
+    if (inst.componentWillUpdate) { // 如果存在componentWillUpdate方法，则执行它
       inst.componentWillUpdate(nextProps, nextState, nextContext);
     }
 
     this._currentElement = nextElement;
     this._context = unmaskedContext;
+
+    // 更新组件的props、state和context
     inst.props = nextProps;
     inst.state = nextState;
     inst.context = nextContext;
 
+    // 调用render渲染组件
     this._updateRenderedComponent(transaction, unmaskedContext);
 
-    if (hasComponentDidUpdate) {
+    if (hasComponentDidUpdate) { //  当组件完成更新后，如果存在componentDidUpdate方法，则调用， 这里会检查组件是否是挂载的状态
       transaction.getReactMountReady().enqueue(
         inst.componentDidUpdate.bind(inst, prevProps, prevState, prevContext),
         inst
@@ -835,13 +869,17 @@ var ReactCompositeComponentMixin = {
   /**
    * Call the component's `render` method and update the DOM accordingly.
    *
+   * 调用组件的render方法，渲染组件
+   *
    * @param {ReactReconcileTransaction} transaction
    * @internal
    */
   _updateRenderedComponent: function(transaction, context) {
-    var prevComponentInstance = this._renderedComponent;
-    var prevRenderedElement = prevComponentInstance._currentElement;
-    var nextRenderedElement = this._renderValidatedComponent();
+    var prevComponentInstance = this._renderedComponent; // 缓存当前组件
+    var prevRenderedElement = prevComponentInstance._currentElement; // 缓存当前组件的渲染节点
+    var nextRenderedElement = this._renderValidatedComponent(); // 拿到待渲染的组件节点
+
+    // 如果组件需要更新，则调用ReactReconciler.receiveComponent递归更新更新组件
     if (shouldUpdateReactComponent(prevRenderedElement, nextRenderedElement)) {
       ReactReconciler.receiveComponent(
         prevComponentInstance,
@@ -849,14 +887,18 @@ var ReactCompositeComponentMixin = {
         transaction,
         this._processChildContext(context)
       );
-    } else {
+    } else { // 组件不需要更新，则渲染组件
       var oldNativeNode = ReactReconciler.getNativeNode(prevComponentInstance);
       ReactReconciler.unmountComponent(prevComponentInstance, false);
 
       this._renderedNodeType = ReactNodeTypes.getType(nextRenderedElement);
+
+      // 得到nextRenderedElement对应的Component类的实例
       this._renderedComponent = this._instantiateReactComponent(
         nextRenderedElement
       );
+
+      // 使用render递归渲染组件
       var nextMarkup = ReactReconciler.mountComponent(
         this._renderedComponent,
         transaction,
@@ -882,6 +924,7 @@ var ReactCompositeComponentMixin = {
 
   /**
    * @protected
+   * 调用和执行组件的render方法，获取到待的渲染组件
    */
   _renderValidatedComponentWithoutOwnerOrContext: function() {
     var inst = this._instance;
@@ -901,6 +944,7 @@ var ReactCompositeComponentMixin = {
 
   /**
    * @private
+   * 检验组件
    */
   _renderValidatedComponent: function() {
     var renderedComponent;

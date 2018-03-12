@@ -52,6 +52,8 @@ var ReactDefaultBatchingStrategy = {
   /**
    * Call the provided function in a context within which calls to `setState`
    * and friends are batched such that components aren't updated unnecessarily.
+   *
+   * 处理setState的批更新操作，减少不必要的更新
    */
   batchedUpdates: function(callback, a, b, c, d, e) {
     var alreadyBatchingUpdates = ReactDefaultBatchingStrategy.isBatchingUpdates;
@@ -59,9 +61,11 @@ var ReactDefaultBatchingStrategy = {
     ReactDefaultBatchingStrategy.isBatchingUpdates = true;
 
     // The code is written this way to avoid extra allocations
+    // 这是避免额外的分配的方法
     if (alreadyBatchingUpdates) {
       callback(a, b, c, d, e);
     } else {
+      // 执行事务
       transaction.perform(callback, null, a, b, c, d, e);
     }
   },

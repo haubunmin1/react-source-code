@@ -741,6 +741,8 @@ var ReactClass = {
   /**
    * Creates a composite component class given a class specification.
    *
+   * 创建自定义组件，组件初始化
+   *
    * @param {object} spec Class specification (which must define `render`).
    * @return {function} Component constructor function.
    * @public
@@ -803,6 +805,7 @@ var ReactClass = {
 
     // Initialize the defaultProps property after all mixins have been merged.
     if (Constructor.getDefaultProps) {
+      // 只执行了一次，也就是本次初始化的时候执行了一次
       Constructor.defaultProps = Constructor.getDefaultProps();
     }
 

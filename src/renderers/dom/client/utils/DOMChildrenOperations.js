@@ -23,6 +23,7 @@ var setTextContent = require('setTextContent');
 function getNodeAfter(parentNode, node) {
   // Special case for text components, which return [open, close] comments
   // from getNativeNode.
+  // 文本返回格式需要注意下，可能会有注释
   if (Array.isArray(node)) {
     node = node[1];
   }
@@ -46,10 +47,12 @@ var insertChildAt = createMicrosoftUnsafeLocalFunction(
   }
 );
 
+// 在真实DOM中插入新节点
 function insertLazyTreeChildAt(parentNode, childTree, referenceNode) {
   DOMLazyTree.insertTreeBefore(parentNode, childTree, referenceNode);
 }
 
+// 在真实DOM中移动节点
 function moveChild(parentNode, childNode, referenceNode) {
   if (Array.isArray(childNode)) {
     moveDelimitedText(parentNode, childNode[0], childNode[1], referenceNode);
@@ -58,6 +61,7 @@ function moveChild(parentNode, childNode, referenceNode) {
   }
 }
 
+// 在真实DOM中移除节点
 function removeChild(parentNode, childNode) {
   if (Array.isArray(childNode)) {
     var closingComment = childNode[1];
@@ -68,6 +72,7 @@ function removeChild(parentNode, childNode) {
   parentNode.removeChild(childNode);
 }
 
+// 文本组件需要去除openingComment和closeComment，取得其中的节点
 function moveDelimitedText(
   parentNode,
   openingComment,
@@ -85,6 +90,7 @@ function moveDelimitedText(
   }
 }
 
+// 文本节点的移除
 function removeDelimitedText(parentNode, startNode, closingComment) {
   while (true) {
     var node = startNode.nextSibling;
@@ -97,6 +103,7 @@ function removeDelimitedText(parentNode, startNode, closingComment) {
   }
 }
 
+// 文本节点的替换
 function replaceDelimitedText(openingComment, closingComment, stringText) {
   var parentNode = openingComment.parentNode;
   var nodeAfterComment = openingComment.nextSibling;
@@ -139,36 +146,37 @@ var DOMChildrenOperations = {
    * @internal
    */
   processUpdates: function(parentNode, updates) {
+    // 遍历新增的节点，处理更新
     for (var k = 0; k < updates.length; k++) {
       var update = updates[k];
-      switch (update.type) {
-        case ReactMultiChildUpdateTypes.INSERT_MARKUP:
+      switch (update.type) { // 判断更新类型
+        case ReactMultiChildUpdateTypes.INSERT_MARKUP: // 节点插入
           insertLazyTreeChildAt(
             parentNode,
             update.content,
             getNodeAfter(parentNode, update.afterNode)
           );
           break;
-        case ReactMultiChildUpdateTypes.MOVE_EXISTING:
+        case ReactMultiChildUpdateTypes.MOVE_EXISTING: // 节点移动
           moveChild(
             parentNode,
             update.fromNode,
             getNodeAfter(parentNode, update.afterNode)
           );
           break;
-        case ReactMultiChildUpdateTypes.SET_MARKUP:
+        case ReactMultiChildUpdateTypes.SET_MARKUP: // 设置节点内容-HTML文本
           setInnerHTML(
             parentNode,
             update.content
           );
           break;
-        case ReactMultiChildUpdateTypes.TEXT_CONTENT:
+        case ReactMultiChildUpdateTypes.TEXT_CONTENT: // 设置节点内容-Text文本
           setTextContent(
             parentNode,
             update.content
           );
           break;
-        case ReactMultiChildUpdateTypes.REMOVE_NODE:
+        case ReactMultiChildUpdateTypes.REMOVE_NODE: // 节点删除
           removeChild(parentNode, update.fromNode);
           break;
       }

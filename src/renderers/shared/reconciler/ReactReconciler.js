@@ -22,6 +22,7 @@ function attachRefs() {
   ReactRef.attachRefs(this, this._currentElement);
 }
 
+// 协调器，把组件实例和事务联系到一起
 var ReactReconciler = {
 
   /**
